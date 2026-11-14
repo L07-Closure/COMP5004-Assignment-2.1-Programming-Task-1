@@ -181,6 +181,22 @@ class OneHotEncoderTests(unittest.TestCase):
         encoder = OneHotEncoder().partial_fit([["red"]])
         encoder.fit([["blue"]])
         self.assertEqual(encoder.categories_[0].tolist(), ["blue"])
-        
+
+    def test_new_category_keeps_other_column_positions(self):
+            encoder = OneHotEncoder().partial_fit(
+                [["red", "small"], ["blue", "small"]]
+            )
+            before = encoder.transform([["red", "small"]])
+    
+            encoder.partial_fit([["green", "small"]])
+    
+            np.testing.assert_array_equal(
+                encoder.transform([["red", "small"]])[:, :3], before
+            )
+            np.testing.assert_array_equal(
+                encoder.transform([["green", "small"]]),
+                [[0.0, 0.0, 1.0, 1.0]],
+            )
+            
 if __name__ == "__main__":
     unittest.main()

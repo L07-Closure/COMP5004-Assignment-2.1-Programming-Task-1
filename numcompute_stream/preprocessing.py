@@ -229,11 +229,19 @@ class OneHotEncoder(_BaseOneHotEncoder):
             values = list(self.categories_[column])
             for key in array[:, column]:
                 if key not in mapping:
-                    mapping[key] = len(values)
+                    mapping[key] = self._n_output_features
+                    self._n_output_features += 1
                     values.append(key)
             self.categories_[column] = np.array(values, dtype=object)
 
-        widths = [len(values) for values in self.categories_]
-        self._offsets = np.cumsum([0] + widths[:-1], dtype=np.intp)
-        self._n_output_features = sum(widths)
+        return self
+
+    def fit(self, X, y=None):
+        """Learn initial categories and keep their output positions."""
+        super().fit(X, y)
+        for column, mapping in enumerate(self._mappings):
+            offset = self._offsets[column]
+            for key in mapping:
+                mapping[key] += offset
+        self._offsets = np.zeros(self.n_features_in_, dtype=np.intp)
         return self
