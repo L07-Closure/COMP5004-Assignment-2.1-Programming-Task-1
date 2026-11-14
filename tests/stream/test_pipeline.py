@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from numcompute_stream.pipeline import Pipeline
-from numcompute_stream.preprocessing import SimpleImputer, StandardScaler
+from numcompute_stream.preprocessing import OneHotEncoder, SimpleImputer, StandardScaler
 from numcompute_stream.tree import DecisionTreeClassifier
 
 
@@ -65,7 +65,20 @@ class PipelineTests(unittest.TestCase):
         pipe.fit([[0], [1]], [0, 1])
         with self.assertRaises(ValueError):
             pipe.predict([[0, 1]])
+    def test_new_category_between_tree_retrains(self):
+        pipe = Pipeline([
+            ("encode", OneHotEncoder()),
+            ("model", DecisionTreeClassifier(buffer_size=2)),
+        ])
 
+        pipe.partial_fit([["red", "small"], ["blue", "small"]], [0, 1])
+        np.testing.assert_array_equal(pipe.predict([["red", "small"]]), [0])
+
+        pipe.partial_fit([["green", "small"]], [1])
+        np.testing.assert_array_equal(pipe.predict([["red", "small"]]), [0])
+
+        pipe.partial_fit([["green", "large"]], [1])
+        np.testing.assert_array_equal(pipe.predict([["green", "small"]]), [1])
 
 if __name__ == "__main__":
     unittest.main()

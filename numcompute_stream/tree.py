@@ -210,9 +210,12 @@ class DecisionTreeClassifier:
         if X_array.dtype.kind not in "biuf":
             raise TypeError("X must contain numeric values")
         if X_array.shape[1] != self.n_features_in_:
-            raise ValueError(
-                f"X must have {self.n_features_in_} features"
-            )
+            if (
+                not self._buffer_X
+                or X_array.shape[1] != self._buffer_X[0].shape[1]
+            ):
+                raise ValueError(f"X must have {self.n_features_in_} features")
+            X_array = X_array[:, :self.n_features_in_]
 
         X_array = X_array.astype(float, copy=True)
         if np.isinf(X_array).any():
@@ -249,10 +252,18 @@ class DecisionTreeClassifier:
         X_array = X_array.astype(float, copy=True)
         if np.isinf(X_array).any():
             raise ValueError("X_chunk must not contain infinity")
-        if self._root is not None and X_array.shape[1] != self.n_features_in_:
+        if self._root is not None and X_array.shape[1] < self.n_features_in_:
             raise ValueError("X_chunk has the wrong number of features")
-        if self._buffer_X and X_array.shape[1] != self._buffer_X[0].shape[1]:
-            raise ValueError("X_chunk has the wrong number of features")
+        if self._buffer_X:
+            old_width = self._buffer_X[0].shape[1]
+            if X_array.shape[1] < old_width:
+                raise ValueError("X_chunk has the wrong number of features")
+            if X_array.shape[1] > old_width:
+                extra = X_array.shape[1] - old_width
+                for i in range(len(self._buffer_X)):
+                    old_chunk = self._buffer_X[i]
+                    zeros = np.zeros((len(old_chunk), extra))
+                    self._buffer_X[i] = np.column_stack((old_chunk, zeros))
 
         self._buffer_X.append(X_array)
         self._buffer_y.append(y_array.copy())
