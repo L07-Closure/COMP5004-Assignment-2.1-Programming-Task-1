@@ -223,3 +223,52 @@ class StreamingClassificationMetrics:
     def reset(self):
         """Clear all accumulated samples."""
         self._confusion.reset()
+
+class StreamingAUC:
+    """Calculate binary AUC from scores collected across chunks."""
+
+    def __init__(self):
+        self.reset()
+
+    def update(self, y_true_chunk, y_score_chunk):
+        """Add true labels and their corresponding scores."""
+        y_true = np.asarray(y_true_chunk)
+        y_score = np.asarray(y_score_chunk)
+
+        if y_true.ndim != 1 or y_score.ndim != 1:
+            raise ValueError("labels and scores must be 1D")
+        if len(y_true) == 0 or len(y_true) != len(y_score):
+            raise ValueError("chunks must have the same nonzero length")
+        if not np.all(np.isin(y_true, (0, 1))):
+            raise ValueError("AUC requires binary labels 0 and 1")
+        if y_score.dtype.kind not in "biuf" or not np.all(np.isfinite(y_score)):
+            raise ValueError("scores must be finite numbers")
+
+        for label, score in zip(y_true, y_score):
+            if label == 1:
+                self._positive_scores.append(float(score))
+            else:
+                self._negative_scores.append(float(score))
+
+        return self
+
+    def result(self):
+        """Return AUC across all chunks added since reset."""
+        if not self._positive_scores or not self._negative_scores:
+            raise ValueError("AUC needs both positive and negative samples")
+
+        wins = 0.0
+        for positive in self._positive_scores:
+            for negative in self._negative_scores:
+                if positive > negative:
+                    wins += 1
+                elif positive == negative:
+                    wins += 0.5
+
+        pairs = len(self._positive_scores) * len(self._negative_scores)
+        return wins / pairs
+
+    def reset(self):
+        """Clear the accumulated scores."""
+        self._positive_scores = []
+        self._negative_scores = []

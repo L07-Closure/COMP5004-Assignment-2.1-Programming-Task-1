@@ -4,6 +4,7 @@ from numcompute_stream.metrics import (
     StreamingAccuracy,
     StreamingClassificationMetrics,
     StreamingConfusionMatrix,
+    StreamingAUC
 )
 
 
@@ -184,6 +185,35 @@ class StreamingClassificationMetricsTests(unittest.TestCase):
             metric.update([0, 1], [0])
         with self.assertRaises(ValueError):
             metric.window_result()
+
+class StreamingAUCTests(unittest.TestCase):
+    def test_accumulates_scores_across_chunks(self):
+        metric = StreamingAUC()
+        metric.update([0, 1], [0.1, 0.8])
+        metric.update([0, 1], [0.4, 0.4])
+
+        self.assertAlmostEqual(metric.result(), 0.875)
+
+    def test_reset_clears_scores(self):
+        metric = StreamingAUC()
+        metric.update([0, 1], [0.1, 0.8])
+        metric.reset()
+
+        with self.assertRaises(ValueError):
+            metric.result()
+
+        metric.update([0, 1], [0.9, 0.2])
+        self.assertEqual(metric.result(), 0.0)
+
+    def test_rejects_invalid_chunks(self):
+        metric = StreamingAUC()
+
+        with self.assertRaises(ValueError):
+            metric.update([0, 1], [0.5])
+        with self.assertRaises(ValueError):
+            metric.update([0, 2], [0.2, 0.8])
+        with self.assertRaises(ValueError):
+            metric.update([0, 1], [0.2, float("nan")])
 
 if __name__ == "__main__":
     unittest.main()
