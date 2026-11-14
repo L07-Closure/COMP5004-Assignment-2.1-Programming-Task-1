@@ -261,3 +261,38 @@ The `benchmark/` runner and `demo/` are repository resources; the installed dist
 | Crisanto | Sorting, searching, ranking, percentiles and final report |
 | Shubh | Numerical differentiation, pipelines, notebook demonstration and demo video |
 | Lingqi | Shared I/O work, evaluation metrics and benchmarks |
+
+
+## Assignment 2.2: Streaming extension
+
+This branch adds the `numcompute_stream` package to the original NumCompute project. The Assignment 2.1 sections above describe the original package; their 497-test count and AUC limitation do not include this extension.
+
+### Setup
+
+Use Python 3.10 or later. From the repository root, install the project and matplotlib:
+
+```powershell
+python -m pip install -e .
+python -m pip install matplotlib
+```
+
+### Demo
+
+Generate the example CSV, then open `demo/stream_demo.ipynb` in VS Code. Select a Python kernel with NumPy and matplotlib and choose **Run All**.
+
+```powershell
+python -B demo/make_stream_data.py
+```
+
+The notebook reads the CSV in 20-row chunks. The first two chunks fill the tree's 40-sample buffer. Later chunks are scored before they update the model. The notebook displays chunk accuracy, cumulative accuracy, model memory, buffer-size comparisons and the latest predictions.
+
+### Tests and benchmarks
+
+Run these commands from the repository root:
+
+```powershell
+python -B -m unittest discover -s tests
+python -B -m benchmark.streaming_benchmark
+```
+
+The benchmark compares loop and NumPy accuracy counting on the same chunks. It also compares tree accuracy and retraining time with buffer sizes 20, 40 and 80. A retraining time covers the full `partial_fit()` call that creates a new tree, so timings can vary between runs.
