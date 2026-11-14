@@ -1,5 +1,6 @@
 import numpy as np
 
+from numcompute.preprocessing import OneHotEncoder as _BaseOneHotEncoder
 
 class StandardScaler:
     """Standardize numeric columns using statistics updated by chunks."""
@@ -192,3 +193,47 @@ class SimpleImputer:
     def fit_transform(self, X, y=None):
         """Fit on X and return a filled array with the same shape."""
         return self.fit(X, y).transform(X)
+
+class OneHotEncoder(_BaseOneHotEncoder):
+    """Expand learned categories as new data chunks arrive."""
+
+    def partial_fit(self, X_chunk, y=None):
+        """Add categories from a 2D chunk and return self.
+
+        Each column contains strings or real numbers. None and NaN
+        represent a missing category. New categories increase the
+        width of the encoded output.
+        """
+        array = self._validate_input(X_chunk, fitting=True)
+
+        if not hasattr(self, "_mappings"):
+            return self.fit(array, y)
+
+        if array.shape[1] != self.n_features_in_:
+            raise ValueError("X_chunk has the wrong number of features")
+
+        for column, mapping in enumerate(self._mappings):
+            old_types = {
+                isinstance(key, str) for key in mapping if key is not None
+            }
+            new_types = {
+                isinstance(key, str)
+                for key in array[:, column] if key is not None
+            }
+            if old_types and new_types and old_types != new_types:
+                raise TypeError(
+                    f"Column {column} cannot mix strings and numbers"
+                )
+
+        for column, mapping in enumerate(self._mappings):
+            values = list(self.categories_[column])
+            for key in array[:, column]:
+                if key not in mapping:
+                    mapping[key] = len(values)
+                    values.append(key)
+            self.categories_[column] = np.array(values, dtype=object)
+
+        widths = [len(values) for values in self.categories_]
+        self._offsets = np.cumsum([0] + widths[:-1], dtype=np.intp)
+        self._n_output_features = sum(widths)
+        return self

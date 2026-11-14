@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from numcompute_stream.preprocessing import StandardScaler, SimpleImputer
-
+from numcompute_stream.preprocessing import OneHotEncoder
 
 class StandardScalerTests(unittest.TestCase):
     def test_fit_transform(self):
@@ -123,5 +123,64 @@ class SimpleImputerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             SimpleImputer().partial_fit([[np.inf]])
 
+class OneHotEncoderTests(unittest.TestCase):
+    def test_new_category_is_added(self):
+        encoder = OneHotEncoder().partial_fit([["red"], ["blue"]])
+        encoder.partial_fit([["green"]])
+        self.assertEqual(
+            encoder.categories_[0].tolist(), ["red", "blue", "green"]
+        )
+        np.testing.assert_array_equal(
+            encoder.transform([["green"]]), [[0.0, 0.0, 1.0]]
+        )
+
+    def test_existing_category_keeps_its_position(self):
+        encoder = OneHotEncoder().partial_fit([["red"], ["blue"]])
+        before = encoder.transform([["red"]])
+        encoder.partial_fit([["green"]])
+        np.testing.assert_array_equal(
+            encoder.transform([["red"]])[:, :2], before
+        )
+
+    def test_two_columns_expand(self):
+        encoder = OneHotEncoder().partial_fit([["red", "small"]])
+        encoder.partial_fit([["blue", "large"]])
+        np.testing.assert_array_equal(
+            encoder.transform([["red", "large"]]),
+            [[1.0, 0.0, 0.0, 1.0]],
+        )
+
+    def test_none_and_nan_are_one_category(self):
+        encoder = OneHotEncoder().partial_fit([[None]])
+        encoder.partial_fit([[np.nan]])
+        self.assertEqual(encoder.transform([[None]]).shape, (1, 1))
+
+    def test_unknown_can_be_ignored_before_update(self):
+        encoder = OneHotEncoder(handle_unknown="ignore")
+        encoder.partial_fit([["red"]])
+        np.testing.assert_array_equal(
+            encoder.transform([["blue"]]), [[0.0]]
+        )
+
+    def test_wrong_feature_count(self):
+        encoder = OneHotEncoder().partial_fit([["red"]])
+        with self.assertRaises(ValueError):
+            encoder.partial_fit([["blue", "large"]])
+
+    def test_mixed_types_across_chunks(self):
+        encoder = OneHotEncoder().partial_fit([["red"]])
+        with self.assertRaises(TypeError):
+            encoder.partial_fit([[1]])
+
+    def test_empty_chunk(self):
+        encoder = OneHotEncoder()
+        with self.assertRaises(ValueError):
+            encoder.partial_fit(np.empty((0, 1), dtype=object))
+
+    def test_fit_resets_categories(self):
+        encoder = OneHotEncoder().partial_fit([["red"]])
+        encoder.fit([["blue"]])
+        self.assertEqual(encoder.categories_[0].tolist(), ["blue"])
+        
 if __name__ == "__main__":
     unittest.main()
