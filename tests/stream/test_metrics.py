@@ -1,6 +1,10 @@
 import unittest
 
-from numcompute_stream.metrics import StreamingAccuracy, StreamingConfusionMatrix
+from numcompute_stream.metrics import (
+    StreamingAccuracy,
+    StreamingClassificationMetrics,
+    StreamingConfusionMatrix,
+)
 
 
 class StreamingAccuracyTests(unittest.TestCase):
@@ -126,6 +130,60 @@ class StreamingConfusionMatrixTests(unittest.TestCase):
         windowed = StreamingConfusionMatrix(window_size=2)
         with self.assertRaises(ValueError):
             windowed.window_result()
+class StreamingClassificationMetricsTests(unittest.TestCase):
+    def test_binary_scores_across_chunks_and_window(self):
+        metric = StreamingClassificationMetrics(window_size=2)
+        metric.update([0, 1], [0, 0])
+        metric.update([1, 0], [1, 1])
+
+        self.assertEqual(
+            metric.result(),
+            {"precision": 0.5, "recall": 0.5, "f1": 0.5},
+        )
+        recent = metric.window_result()
+        self.assertEqual(recent["precision"], 0.5)
+        self.assertEqual(recent["recall"], 1.0)
+        self.assertAlmostEqual(recent["f1"], 2 / 3)
+
+    def test_macro_scores_with_three_classes(self):
+        metric = StreamingClassificationMetrics(average="macro")
+        metric.update([0, 1, 2, 2], [0, 0, 2, 1])
+
+        scores = metric.result()
+        self.assertAlmostEqual(scores["precision"], 0.5)
+        self.assertAlmostEqual(scores["recall"], 0.5)
+        self.assertAlmostEqual(scores["f1"], 4 / 9)
+
+    def test_custom_positive_label(self):
+        metric = StreamingClassificationMetrics(pos_label="yes")
+        metric.update(["yes", "no", "yes"], ["yes", "yes", "no"])
+
+        self.assertEqual(
+            metric.result(),
+            {"precision": 0.5, "recall": 0.5, "f1": 0.5},
+        )
+
+    def test_zero_scores_and_reset(self):
+        metric = StreamingClassificationMetrics()
+        metric.update([0, 0], [0, 0])
+        self.assertEqual(
+            metric.result(),
+            {"precision": 0.0, "recall": 0.0, "f1": 0.0},
+        )
+
+        metric.reset()
+        with self.assertRaises(ValueError):
+            metric.result()
+
+    def test_invalid_options_and_chunks(self):
+        with self.assertRaises(ValueError):
+            StreamingClassificationMetrics(average="weighted")
+
+        metric = StreamingClassificationMetrics()
+        with self.assertRaises(ValueError):
+            metric.update([0, 1], [0])
+        with self.assertRaises(ValueError):
+            metric.window_result()
 
 if __name__ == "__main__":
     unittest.main()
