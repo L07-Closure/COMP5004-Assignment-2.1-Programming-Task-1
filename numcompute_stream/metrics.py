@@ -154,3 +154,72 @@ class StreamingConfusionMatrix:
         self._labels = set()
         self._recent = deque()
         self._window_counts = {}
+
+class StreamingClassificationMetrics:
+    """Track precision, recall and F1 across classification chunks."""
+
+    def __init__(self, average="binary", pos_label=1, window_size=None):
+        """Use binary scores for pos_label or macro scores for all labels."""
+        if average not in ("binary", "macro"):
+            raise ValueError("average must be 'binary' or 'macro'")
+        self.average = average
+        self.pos_label = pos_label
+        self._confusion = StreamingConfusionMatrix(window_size)
+
+    def update(self, y_true_chunk, y_pred_chunk):
+        """Add equally sized 1D label chunks and return self."""
+        self._confusion.update(y_true_chunk, y_pred_chunk)
+        return self
+
+    def _scores(self, matrix, labels):
+        """Calculate scores from a confusion matrix."""
+        scores = []
+
+        for i in range(len(labels)):
+            true_positive = matrix[i, i]
+            predicted_positive = np.sum(matrix[:, i])
+            actual_positive = np.sum(matrix[i, :])
+
+            precision = (
+                float(true_positive / predicted_positive)
+                if predicted_positive else 0.0
+            )
+            recall = (
+                float(true_positive / actual_positive)
+                if actual_positive else 0.0
+            )
+            f1 = (
+                2 * precision * recall / (precision + recall)
+                if precision + recall else 0.0
+            )
+            scores.append((precision, recall, f1))
+
+        if self.average == "binary":
+            for i, label in enumerate(labels):
+                if label == self.pos_label:
+                    precision, recall, f1 = scores[i]
+                    break
+            else:
+                precision, recall, f1 = 0.0, 0.0, 0.0
+        else:
+            precision, recall, f1 = np.mean(scores, axis=0)
+
+        return {
+            "precision": float(precision),
+            "recall": float(recall),
+            "f1": float(f1),
+        }
+
+    def result(self):
+        """Return cumulative precision, recall and F1."""
+        matrix, labels = self._confusion.result()
+        return self._scores(matrix, labels)
+
+    def window_result(self):
+        """Return scores for the most recent window_size samples."""
+        matrix, labels = self._confusion.window_result()
+        return self._scores(matrix, labels)
+
+    def reset(self):
+        """Clear all accumulated samples."""
+        self._confusion.reset()
