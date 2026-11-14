@@ -65,6 +65,5 @@ class StreamingAccuracyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             windowed.window_result()
 
-
 if __name__ == "__main__":
     unittest.main()
