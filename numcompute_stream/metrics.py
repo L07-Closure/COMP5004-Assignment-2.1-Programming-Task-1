@@ -257,15 +257,13 @@ class StreamingAUC:
         if not self._positive_scores or not self._negative_scores:
             raise ValueError("AUC needs both positive and negative samples")
 
+        negatives = np.asarray(self._negative_scores)
         wins = 0.0
         for positive in self._positive_scores:
-            for negative in self._negative_scores:
-                if positive > negative:
-                    wins += 1
-                elif positive == negative:
-                    wins += 0.5
+            wins += np.count_nonzero(positive > negatives)
+            wins += 0.5 * np.count_nonzero(positive == negatives)
 
-        pairs = len(self._positive_scores) * len(self._negative_scores)
+        pairs = len(self._positive_scores) * len(negatives)
         return wins / pairs
 
     def reset(self):
