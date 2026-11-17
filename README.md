@@ -269,7 +269,7 @@ This branch adds the `numcompute_stream` package to the original NumCompute proj
 
 ### Setup
 
-Use Python 3.10 or later. From the repository root, install the project and matplotlib:
+Use Python 3.113. From the repository root, install the project and matplotlib:
 
 ```powershell
 python -m pip install -e .
