@@ -1,4 +1,4 @@
-# NumCompute
+# NumCompute(For Assignment 2.2, see the “Assignment 2.2: Streaming extension” section below.)
 
 A modular scientific computing toolkit built with Python and NumPy for COMP 5004 Assignment 2.1. It provides tabular data loading, preprocessing, sorting and ranking, descriptive statistics, evaluation metrics, numerical differentiation, composable pipelines, and reproducible performance comparisons.
 
