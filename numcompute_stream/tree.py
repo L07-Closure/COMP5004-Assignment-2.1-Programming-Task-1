@@ -87,25 +87,25 @@ class DecisionTreeClassifier:
         for feature in features:
             order = np.argsort(X[:, feature], kind="stable")
             values = X[order, feature]
-            cuts = np.flatnonzero(values[:-1] < values[1:]) + 1
+            cuts = np.flatnonzero(values[:-1] < values[1:]) + 1 # the same value can not be splitted
             if len(cuts) == 0:
                 continue
 
             sorted_codes = y_codes[order]
-            class_rows = sorted_codes[:, None] == np.arange(len(classes))
+            class_rows = sorted_codes[:, None] == np.arange(len(classes)) # count each class on the lesft of every possible vut
             left_counts = np.cumsum(class_rows, axis=0)[cuts - 1]
             right_counts = total_counts - left_counts
 
             left_score = self._impurity_from_counts(left_counts)
             right_score = self._impurity_from_counts(right_counts)
-            scores = (
+            scores = ( # weight each side by its number of samples
                 cuts * left_score + (n_samples - cuts) * right_score
             ) / n_samples
 
             index = int(np.argmin(scores))
-            if scores[index] < best_score - 1e-12:
+            if scores[index] < best_score - 1e-12: # ignore small impurity changes by rounding
                 cut = int(cuts[index])
-                threshold = values[cut - 1] / 2 + values[cut] / 2
+                threshold = values[cut - 1] / 2 + values[cut] / 2 # find midpoint
                 if threshold >= values[cut]:
                     threshold = values[cut - 1]
 
@@ -209,7 +209,7 @@ class DecisionTreeClassifier:
             raise ValueError("X must have shape (n_samples, n_features)")
         if X_array.dtype.kind not in "biuf":
             raise TypeError("X must contain numeric values")
-        if X_array.shape[1] != self.n_features_in_:
+        if X_array.shape[1] != self.n_features_in_: # the current tree uses its old feature count before the retraining
             if (
                 not self._buffer_X
                 or X_array.shape[1] != self._buffer_X[0].shape[1]
@@ -258,7 +258,7 @@ class DecisionTreeClassifier:
             old_width = self._buffer_X[0].shape[1]
             if X_array.shape[1] < old_width:
                 raise ValueError("X_chunk has the wrong number of features")
-            if X_array.shape[1] > old_width:
+            if X_array.shape[1] > old_width: # pad old buffer chunks when new category is added to the colunm
                 extra = X_array.shape[1] - old_width
                 for i in range(len(self._buffer_X)):
                     old_chunk = self._buffer_X[i]

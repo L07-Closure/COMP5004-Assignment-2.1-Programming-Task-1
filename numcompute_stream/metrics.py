@@ -34,7 +34,7 @@ class StreamingAccuracy:
         self.correct += int(np.count_nonzero(correct))
         self.total += len(y_true)
 
-        if self.window_size is not None:
+        if self.window_size is not None: # drop old results when the sample window is full
             for value in correct:
                 if len(self._recent) == self.window_size:
                     self._window_correct -= self._recent.popleft()
@@ -104,7 +104,7 @@ class StreamingConfusionMatrix:
             self._labels.update(pair)
             self.total += 1
 
-            if self.window_size is not None:
+            if self.window_size is not None: # when the windows is full, remove oldest pair 
                 if len(self._recent) == self.window_size:
                     old = self._recent.popleft()
                     self._window_counts[old] -= 1
@@ -142,7 +142,7 @@ class StreamingConfusionMatrix:
         if not self._recent:
             raise ValueError("no samples have been added")
 
-        labels = set()
+        labels = set() # windous lables may differ from all-time lables
         for true, pred in self._recent:
             labels.update((true, pred))
         return self._make_result(self._window_counts, labels)
@@ -259,9 +259,9 @@ class StreamingAUC:
 
         negatives = np.asarray(self._negative_scores)
         wins = 0.0
-        for positive in self._positive_scores:
+        for positive in self._positive_scores: # compare the positive score with negative of them
             wins += np.count_nonzero(positive > negatives)
-            wins += 0.5 * np.count_nonzero(positive == negatives)
+            wins += 0.5 * np.count_nonzero(positive == negatives) # equal scores count the half times of win
 
         pairs = len(self._positive_scores) * len(negatives)
         return wins / pairs

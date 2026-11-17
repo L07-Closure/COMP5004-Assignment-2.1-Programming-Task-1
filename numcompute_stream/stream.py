@@ -24,12 +24,12 @@ class StreamTrainer:
 
     def _model_memory_bytes(self):
         """Estimate memory used by pipeline steps, arrays and tree nodes."""
-        total = 0
+        total = 0 # this is an estimate, not full python memory count
 
         for _, step in self.pipeline.steps:
             total += sys.getsizeof(step)
 
-            for value in vars(step).values():
+            for value in vars(step).values(): 
                 if isinstance(value, np.ndarray):
                     total += value.nbytes
                 elif isinstance(value, list):
@@ -37,7 +37,7 @@ class StreamTrainer:
                         if isinstance(item, np.ndarray):
                             total += item.nbytes
 
-            nodes = [getattr(step, "_root", None)]
+            nodes = [getattr(step, "_root", None)] # the fitted tree include its nodes
             while nodes:
                 node = nodes.pop()
                 if node is not None:

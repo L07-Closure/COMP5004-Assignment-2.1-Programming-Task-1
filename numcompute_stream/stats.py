@@ -30,7 +30,7 @@ class StreamingStats:
         if np.isinf(array).any():
             raise ValueError("X_chunk must not contain infinity")
 
-        if self.n_features_in_ is None:
+        if self.n_features_in_ is None: # the first chunk sets the expected number of features
             self.n_features_in_ = array.shape[1]
             self._columns = [
                 _ColumnStats(nan_policy="omit")
@@ -39,10 +39,10 @@ class StreamingStats:
         elif array.shape[1] != self.n_features_in_:
             raise ValueError("X_chunk has the wrong number of features")
 
-        for column, stats in zip(array.T, self._columns):
+        for column, stats in zip(array.T, self._columns): # keep a splitted running summary for per colum
             stats.update(column)
 
-        self._chunks.append(array)
+        self._chunks.append(array) # Save chunks for later quantile and histogram calculations
         return self
 
     def update(self, X_chunk):

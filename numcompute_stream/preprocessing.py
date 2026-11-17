@@ -48,7 +48,7 @@ class StandardScaler:
         elif n_features != self.n_features_in_:
             raise ValueError("X_chunk has the wrong number of features")
 
-        valid = ~np.isnan(array)
+        valid = ~np.isnan(array) # skip missing values in each colunm
         chunk_count = valid.sum(axis=0)
         chunk_sum = np.nansum(array, axis=0)
         chunk_mean = np.divide(
@@ -58,7 +58,7 @@ class StandardScaler:
         centered = np.where(valid, array - chunk_mean, 0.0)
         chunk_M2 = np.sum(centered ** 2, axis=0)
 
-        total = self.count_ + chunk_count
+        total = self.count_ + chunk_count # combine this chunk
         delta = chunk_mean - self.mean_
         weight = np.divide(
             chunk_count, total,
@@ -69,7 +69,7 @@ class StandardScaler:
             out=np.zeros(n_features), where=total > 0,
         )
 
-        self.M2_ += chunk_M2 + delta ** 2 * cross
+        self.M2_ += chunk_M2 + delta ** 2 * cross # M2 is stores the runing sum of squared differences
         self.mean_ += delta * weight
         self.count_ = total
         return self
@@ -212,7 +212,7 @@ class OneHotEncoder(_BaseOneHotEncoder):
         if array.shape[1] != self.n_features_in_:
             raise ValueError("X_chunk has the wrong number of features")
 
-        for column, mapping in enumerate(self._mappings):
+        for column, mapping in enumerate(self._mappings): # check types before changing mapping
             old_types = {
                 isinstance(key, str) for key in mapping if key is not None
             }
@@ -225,7 +225,7 @@ class OneHotEncoder(_BaseOneHotEncoder):
                     f"Column {column} cannot mix strings and numbers"
                 )
 
-        for column, mapping in enumerate(self._mappings):
+        for column, mapping in enumerate(self._mappings): # do not moving old category
             values = list(self.categories_[column])
             for key in array[:, column]:
                 if key not in mapping:
